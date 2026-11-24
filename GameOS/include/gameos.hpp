@@ -2205,6 +2205,14 @@ void __stdcall gos_SetupViewport( bool FillZ, float ZBuffer, bool FillBG, DWORD 
 //
 void __stdcall gos_GetViewport( float* pViewportMulX, float* pViewportMulY, float* pViewportAddX, float* pViewportAddY );
 
+struct gos_DisplayArea {
+    int x, y, width, height;
+};
+
+gos_DisplayArea gos_GetDisplayArea();
+void gos_ApplyDisplayArea(const gos_DisplayArea& area);
+void gos_SetClassicAspect(bool enabled);
+
 //
 // Draw points, pass a pointer to an array of gos_VERTEX's - every vertex is a new point
 //  (you must set the texture to 0 if you want to disable texture mapping on the points)

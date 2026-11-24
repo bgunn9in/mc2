@@ -2630,6 +2630,33 @@ void __stdcall gos_SetupViewport( bool FillZ, float ZBuffer, bool FillBG, DWORD 
 }
 
 
+static bool classicAspect = false;
+
+gos_DisplayArea gos_GetDisplayArea()
+{
+    const int width = std::max(1, Environment.drawableWidth);
+    const int height = std::max(1, Environment.drawableHeight);
+    gos_DisplayArea area = {0, 0, width, height};
+    if (classicAspect) {
+        area.width = std::max(1, std::min(width, height * 4 / 3));
+        area.height = std::max(1, std::min(height, width * 3 / 4));
+        area.x = (width - area.width) / 2;
+        area.y = (height - area.height) / 2;
+    }
+    return area;
+}
+
+void gos_ApplyDisplayArea(const gos_DisplayArea& area)
+{
+    glViewport(area.x, Environment.drawableHeight - area.y - area.height, area.width, area.height);
+}
+
+void gos_SetClassicAspect(bool enabled)
+{
+    classicAspect = enabled;
+    gos_ApplyDisplayArea(gos_GetDisplayArea());
+}
+
 void __stdcall gos_SetRenderViewport(float x, float y, float w, float h)
 {
     gosASSERT(g_gos_renderer);

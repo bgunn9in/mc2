@@ -19,7 +19,7 @@ class StaticInfo
 public:
 
 	void init( FitIniFile& file, const char* blockName, long hiResOffsetX = 0, long hiResOffsetY = 0, DWORD neverFlush = 0 );
-	void render();
+	void render(float horizontalScale = 1.0f);
 	bool isInside( int mouseX, int mouseY );
 
 	void setLocation( float  newX, float newY );
