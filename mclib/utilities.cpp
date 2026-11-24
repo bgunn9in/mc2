@@ -168,14 +168,25 @@ StaticInfo::~StaticInfo()
 	}
 }
 
-void StaticInfo::render()
+void StaticInfo::render(float horizontalScale)
 {
 	unsigned long gosID = mcTextureManager->get_gosTextureHandle( textureHandle );	
 	gos_SetRenderState( gos_State_Texture, gosID );
 	gos_SetRenderState(gos_State_Filter, gos_FilterNone);
 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
 	gos_SetRenderState( gos_State_Clipping, 1);
-	gos_DrawQuads( location, 4 );
+	if (horizontalScale == 1.0f)
+	{
+		gos_DrawQuads(location, 4);
+		return;
+	}
+	gos_VERTEX scaled[4];
+	for (int i = 0; i < 4; ++i)
+	{
+		scaled[i] = location[i];
+		scaled[i].x = location[0].x + (location[i].x - location[0].x) * horizontalScale;
+	}
+	gos_DrawQuads(scaled, 4);
 	
 }
 

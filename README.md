@@ -36,6 +36,14 @@ This project has 0% LLM code and AIs (such as Claude, ChatGPT and other LLMs) ar
 * All third party libraries use their own licenses
 
 
+## Camera zoom and distance haze
+
+To zoom out farther, set `AltitudeMaximumHi` to `2400.0` and
+`AltitudeMaximumLo` to `2250.0` under `[CameraSettings]` in `system.cfg`.
+At that height, set `FogPos` to `75` in `options.cfg` to make the terrain
+easier to see. This starts distance haze at 3500 world units and increases
+the terrain draw distance. Restart the game after editing the files.
+
 Building on Windows
 ===================
 

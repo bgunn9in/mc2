@@ -844,14 +844,14 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
     //sebi, always NOT async mouse
 	//if (!mc2UseAsyncMouse)
 	{
-		if (drawMouse && mouseState != -1)
+		if (drawMouse && mouseState != -1 && mouseXPosition >= 0.0f && mouseXPosition < 1.0f &&
+			mouseYPosition >= 0.0f && mouseYPosition < 1.0f)
 		{
-			// figure out where to put the thing
-			long mouseX = getMouseX();
-			long mouseY = getMouseY();
-	
-			mouseX -= cursors->getMouseHSX( mouseState );
-			mouseY -= cursors->getMouseHSY( mouseState );
+			const auto area = gos_GetDisplayArea();
+			const float horizontalScale = float(Environment.screenWidth) * area.height /
+				(float(Environment.screenHeight) * area.width);
+			const float mouseX = getMouseX() - cursors->getMouseHSX(mouseState) * horizontalScale;
+			const float mouseY = getMouseY() - cursors->getMouseHSY(mouseState);
 	
 			cursors->cursorInfos[mouseState].setLocation( mouseX, mouseY );
 	
@@ -873,7 +873,7 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 				float newV2 = newV + (cursors->cursorInfos[mouseState].height() + .1)/cursors->cursorInfos[mouseState].textureWidth;
 	
 				cursors->cursorInfos[mouseState].setNewUVs( newU, newV, newU2, newV2 );
-				cursors->cursorInfos[mouseState].render();
+				cursors->cursorInfos[mouseState].render(horizontalScale);
 				cursors->cursorInfos[mouseState].u = oldU;
 				cursors->cursorInfos[mouseState].v = oldV;
 
@@ -881,7 +881,7 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 
 			}
 			else
-				cursors->cursorInfos[mouseState].render();
+				cursors->cursorInfos[mouseState].render(horizontalScale);
 		}
 	}
 }	

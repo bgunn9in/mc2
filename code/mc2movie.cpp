@@ -29,6 +29,7 @@
 #include "pl_mpeg/pl_mpeg.h"
 
 #include <SDL2/SDL.h>
+#include <algorithm>
 
 struct MoviePlayerImpl {
 	plm_t *plm;
@@ -378,10 +379,32 @@ void MC2Movie::render (void)
     HGOSRENDERMATERIAL mat = gos_getRenderMaterial("gos_YCbCr");
     gos_SetRenderMaterialParameterMat4(mat, "projection_", gos_GetProjection());
     gos_SetRenderMaterialParameterFloat4(mat, "texture_crop_size_", texture_crop_size_);
-    vec4 scale_offset(MC2Rect.left, MC2Rect.top, MC2Rect.right - MC2Rect.left, MC2Rect.bottom - MC2Rect.top);
+    const auto previousArea = gos_GetDisplayArea();
+    auto area = previousArea;
+    RECT rect = MC2Rect;
+    const bool fullscreenMovie = rect.left == 0 && rect.right == Environment.screenWidth;
+    if (fullscreenMovie) {
+        area = {0, 0, Environment.drawableWidth, Environment.drawableHeight};
+        rect = {0, 0, Environment.screenWidth, Environment.screenHeight};
+        gos_ApplyDisplayArea(area);
+    }
+
+    const float boxWidth = float(rect.right - rect.left);
+    const float boxHeight = float(rect.bottom - rect.top);
+    auto* movie = pimpl->plm;
+    const float displayAspect = float(plm_get_width(movie) * plm_get_pixel_aspect_ratio(movie)) /
+        plm_get_height(movie);
+    const float scaleX = float(area.width) / Environment.screenWidth;
+    const float scaleY = float(area.height) / Environment.screenHeight;
+    const float logicalAspect = displayAspect * scaleY / scaleX;
+    const float width = std::min(boxWidth, boxHeight * logicalAspect);
+    const float height = std::min(boxHeight, boxWidth / logicalAspect);
+    const vec4 scale_offset(rect.left + (boxWidth - width) * 0.5f, rect.top + (boxHeight - height) * 0.5f, width, height);
     gos_SetRenderMaterialParameterFloat4(mat, "scale_offset", scale_offset);
     gos_ApplyRenderMaterial(mat);
     gos_RenderIndexedArray(quad_ib_, quad_vb_, vdecl_);
+    if (fullscreenMovie)
+        gos_ApplyDisplayArea(previousArea);
 
     gos_SetRenderState(gos_State_Texture, 0);
     gos_SetRenderState(gos_State_Texture2, 0);

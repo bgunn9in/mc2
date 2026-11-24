@@ -6,6 +6,18 @@
 
 #include<string.h>
 
+extern SDL_Window* g_sdl_window;
+
+static void getMouseWindowScale(float& scaleX, float& scaleY)
+{
+    int width = 0;
+    int height = 0;
+    if (g_sdl_window)
+        SDL_GetWindowSize(g_sdl_window, &width, &height);
+    scaleX = width > 0 && Environment.drawableWidth > 0 ? float(Environment.drawableWidth) / width : 1.0f;
+    scaleY = height > 0 && Environment.drawableHeight > 0 ? float(Environment.drawableHeight) / height : 1.0f;
+}
+
 //
 // The mouse position and buttons are read once a frame.
 //
@@ -29,18 +41,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDelta, int* pYDelta, int* pWheelDelta, DWORD* pButtonsPressed )
 {
-    //const float w = (float)Environment.screenWidth;
-    //const float h = (float)Environment.screenHeight;
-
-    const float w = (float)Environment.drawableWidth;
-    const float h = (float)Environment.drawableHeight;
+    const auto area = gos_GetDisplayArea();
+    const float w = float(area.width);
+    const float h = float(area.height);
+    float scaleX, scaleY;
+    getMouseWindowScale(scaleX, scaleY);
 
     const input::MouseInfo* mi = input::getMouseInfo();
+    const float x = (mi->x_ * scaleX - area.x) / w;
+    const float y = (mi->y_ * scaleY - area.y) / h;
+    const bool inside = x >= 0.0f && x < 1.0f && y >= 0.0f && y < 1.0f;
 
     if(pXPosition)
-        *pXPosition = mi->x_ / w;
+        *pXPosition = x;
     if(pYPosition)
-        *pYPosition = mi->y_ / h;
+        *pYPosition = y;
 
 	// as percentage of screen size
     
@@ -59,7 +74,7 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
     //if(pWheelDelta)
     //  *pWheelDelta = (int)(100.0f * (mi->wheel_vert_ / h));
     if(pWheelDelta)
-        *pWheelDelta = (int)(mi->wheel_vert_);
+        *pWheelDelta = inside ? (int)mi->wheel_vert_ : 0;
 
     if(pButtonsPressed) {
         DWORD bs = 0;
@@ -69,16 +84,20 @@ void __stdcall gos_GetMouseInfo( float* pXPosition, float* pYPosition, int* pXDe
             down |= mi->button_state_[i] == input::KS_HELD;
             bs |= down ? (1<<i) : 0;
         }
-        *pButtonsPressed = bs;
+        *pButtonsPressed = inside ? bs : 0;
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-extern SDL_Window* g_sdl_window;
 void __stdcall gos_SetMousePosition( float XPosition, float YPosition )
 {
     if(g_sdl_window) {
-        SDL_WarpMouseInWindow(g_sdl_window, (int)XPosition, (int)YPosition);
+        const auto area = gos_GetDisplayArea();
+        float scaleX, scaleY;
+        getMouseWindowScale(scaleX, scaleY);
+        SDL_WarpMouseInWindow(g_sdl_window,
+            (int)((area.x + XPosition * area.width) / scaleX),
+            (int)((area.y + YPosition * area.height) / scaleY));
     }
 }
 

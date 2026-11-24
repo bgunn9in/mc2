@@ -676,6 +676,8 @@ DWORD endTime;
 //---------------------------------------------------------------------------
 void __stdcall UpdateRenderers()
 {
+    const bool optionsOpen = optionsScreenWrapper && !optionsScreenWrapper->isDone();
+    gos_SetClassicAspect(!mission || !mission->isActive() || optionsOpen);
 	if (!SnifferMode)
 	{
 		hasGuardBand = true;
