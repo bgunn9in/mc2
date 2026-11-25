@@ -417,6 +417,7 @@ class Mech3DAppearance: public ObjectAppearance
 		DWORD						localTextureHandle;
 		float						baseRootNodeHeight;
 
+		void storePaintScheme(DWORD red, DWORD green, DWORD blue);
 		DWORD						psRed;
 		DWORD						psBlue;
 		DWORD						psGreen;
