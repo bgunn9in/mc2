@@ -99,6 +99,7 @@ class LogisticsPilot
 		long		load( FitIniFile& file );
 
 		long		update( MechWarrior* pWarrior );
+        void applyEditedSkills(MechWarrior& pilot);
 
 		int			getSpecialtySkillCount() const;
 		int			getSpecialtySkills( const char** array, int& count );

@@ -240,6 +240,14 @@ long LogisticsPilot::load( FitIniFile& file )
 	return 0;
 }
 
+void LogisticsPilot::applyEditedSkills(MechWarrior& pilot)
+{
+    gunnery = pilot.skillRank[MWS_GUNNERY];
+    piloting = pilot.skillRank[MWS_PILOTING];
+    rank = pilot.getRank();
+    memcpy(specialtySkills, pilot.specialtySkills, sizeof(specialtySkills));
+}
+
 void LogisticsPilot::clearIcons()
 {
 	// clear out the old ones
