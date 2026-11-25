@@ -134,6 +134,9 @@ protected:
 		long			getBaseCost() const { return chassis->baseCost; }
 		long			getComponentCount() const { return componentCount; }
 		int				canAddComponent( LogisticsComponent* pComponent, long& x, long& y ) const;
+        static bool ignoresHeatLimit();
+        static void toggleHeatLimit();
+        bool canRemoveHeatSink(const LogisticsComponent* component) const;
 		int				getCost() const;
 		int				getWeight() const;
 		const EString&		getMechClass() const;

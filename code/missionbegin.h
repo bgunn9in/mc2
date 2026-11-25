@@ -17,6 +17,7 @@ MissionBegin:
 #include"asystem.h"
 #include"alistbox.h"
 #include"aanim.h"
+#include "afont.h"
 #include"abl.h"
 
 class LogisticsScreen;
@@ -65,6 +66,11 @@ class MissionBegin
 		void restartMPlayer( const char* playerName);
 
 	private:
+        bool hangarCheatsOpen = false;
+        aFont hangarCheatFont;
+        bool updateHangarCheats();
+        void renderHangarCheats();
+
 
 		bool						bDone;
 		bool						bReadyToLoad;
