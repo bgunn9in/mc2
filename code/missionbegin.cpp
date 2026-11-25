@@ -31,6 +31,7 @@ MissionBegin.cpp			: Implementation of the MissionBegin component.
 #include"logisticsmechicon.h"
 
 #include"prefs.h"
+#include "../resource.h"
 extern CPrefs prefs;
 
 class MechLabScreen;
@@ -114,6 +115,7 @@ bool MissionBegin::startAnimation (long bId, bool isButton, float scrollTime, lo
 
 void MissionBegin::begin()
 {
+    hangarCheatsOpen = false;
 	bReadyToLoad = 0;
 	initABL();
 
@@ -217,6 +219,8 @@ void MissionBegin::begin()
 	pLoadScreen = NULL;
 
 	bDone = 0;
+
+    hangarCheatFont.init(IDS_HOT_KEY_FONT);
 
 	// initialize the main menu
 	mainMenu = new MainMenu;
@@ -452,6 +456,72 @@ long MissionBegin::getCurrentScreenId()
 	return (screenId);
 }
 
+namespace
+{
+GUI_RECT hangarCheatsPanel()
+{
+    const long x = (Environment.screenWidth - 360) / 2;
+    const long y = (Environment.screenHeight - 113) / 2;
+    return {x, y, x + 360, y + 113};
+}
+
+GUI_RECT hangarHeatRow(const GUI_RECT& panel)
+{
+    return {panel.left + 12, panel.top + 40, panel.right - 12, panel.top + 70};
+}
+
+bool mouseOverHangarRow(const GUI_RECT& row)
+{
+    const long x = userInput->getMouseX();
+    const long y = userInput->getMouseY();
+    return x >= row.left && x < row.right && y >= row.top && y < row.bottom;
+}
+}
+
+bool MissionBegin::updateHangarCheats()
+{
+    const bool toggle = gos_GetKeyStatus(KEY_F12) == KEY_PRESSED;
+    if (toggle)
+    {
+        hangarCheatsOpen = !hangarCheatsOpen;
+        if (hangarCheatsOpen)
+            userInput->setMouseCursor(mState_NORMAL);
+        return true;
+    }
+    if (!hangarCheatsOpen)
+        return false;
+
+    if (gos_GetKeyStatus(KEY_ESCAPE) == KEY_PRESSED)
+    {
+        hangarCheatsOpen = false;
+        return true;
+    }
+
+    const bool click = userInput->leftMouseReleased() && !userInput->wasLeftDrag();
+    if (gos_GetKeyStatus(KEY_1) == KEY_PRESSED ||
+        (click && mouseOverHangarRow(hangarHeatRow(hangarCheatsPanel()))))
+        LogisticsVariant::toggleHeatLimit();
+    return true;
+}
+
+void MissionBegin::renderHangarCheats()
+{
+    const GUI_RECT panel = hangarCheatsPanel();
+    const GUI_RECT row = hangarHeatRow(panel);
+    const bool unlimited = LogisticsVariant::ignoresHeatLimit();
+    gos_SetRenderState(gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+    gos_SetRenderState(gos_State_ZWrite, 0);
+    gos_SetRenderState(gos_State_ZCompare, 0);
+    drawRect(panel, 0xf018222a);
+    drawRect({panel.left, panel.top, panel.right, panel.top + 2}, 0xff6ba6c7);
+    drawRect(row, mouseOverHangarRow(row) ? 0xff385c70 : 0xff263b47);
+    hangarCheatFont.render("HANGAR CHEATS", panel.left + 12, panel.top + 14, 336, 22, 0xff8bc6e4, false, 0);
+    hangarCheatFont.render("1   Heat limit", row.left + 8, row.top + 8, 210, 20, 0xffedf4f7, false, 0);
+    hangarCheatFont.render(unlimited ? "OFF" : "ON", row.right - 8, row.top + 8, 0, 20,
+                           unlimited ? 0xffa4df9f : 0xffedf4f7, false, 1);
+    hangarCheatFont.render("F12 / Esc   Close", panel.left + 12, panel.top + 84, 336, 20, 0xffadc4cf, false, 0);
+}
+
 const char* MissionBegin::update()
 {
 
@@ -563,6 +633,15 @@ const char* MissionBegin::update()
 
 	
 	LogisticsScreen*		pCurScreen = screens[curScreenX][curScreenY];
+    const bool inHangar = !MPlayer && curScreenX == 2 && (curScreenY == 1 || curScreenY == 2);
+    if (inHangar && pCurScreen && pCurScreen->getStatus() == LogisticsScreen::RUNNING)
+    {
+        if (updateHangarCheats())
+            return nullptr;
+    }
+    else
+        hangarCheatsOpen = false;
+
 	if ( pCurScreen )
 	{
 		if (logisticsBrain && !MPlayer)
@@ -947,11 +1026,14 @@ void MissionBegin::render()
 
 	}
 
+    if (hangarCheatsOpen)
+        renderHangarCheats();
 	animJustBegun = false;
 }
 
 void MissionBegin::beginSplash( const char* playerName)
 {
+    hangarCheatsOpen = false;
 	// check for old screen and end that
 	if ( curScreenX > -1 && curScreenY > -1 )
 	{

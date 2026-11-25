@@ -186,11 +186,16 @@ public:
 		bool						bAimedShot;
 		
         bool cheatMenuOpen = false;
+        bool pilotEditorOpen = false;
         bool cheatInvulnerability = false;
         bool cheatRapidFire = false;
         bool updateCheatMenu();
         void renderCheatMenu();
         GUI_RECT cheatMenuRect() const;
+        MechWarrior* getSelectedCheatPilot() const;
+        GUI_RECT pilotEditorRect() const;
+        void updatePilotEditor(MechWarrior& pilot, long x, long y);
+        void renderPilotEditor(MechWarrior& pilot, long mouseX, long mouseY);
 
 		static	MissionInterfaceManager* s_instance;
 				

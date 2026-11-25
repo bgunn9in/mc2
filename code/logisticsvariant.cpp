@@ -12,6 +12,12 @@ LogisticsVariant.cpp			: Implementation of the LogisticsVariant component.
 #include"../resource.h"
 #include"cmponent.h" 
 #include"logisticserrors.h"
+#include"multplyr.h"
+
+namespace
+{
+bool ignoreMechLabHeat = false;
+}
 
 
 int LogisticsChassis::weightClasses[5] = { 0, 35, 55, 75, 100};
@@ -592,6 +598,23 @@ int		LogisticsVariant::getMaxHeat() const
 
 	return heat + chassis->maxHeat;
 }
+bool LogisticsVariant::ignoresHeatLimit()
+{
+    return !MPlayer && ignoreMechLabHeat;
+}
+
+void LogisticsVariant::toggleHeatLimit()
+{
+    if (!MPlayer)
+        ignoreMechLabHeat = !ignoreMechLabHeat;
+}
+
+bool LogisticsVariant::canRemoveHeatSink(const LogisticsComponent* component) const
+{
+    return ignoresHeatLimit() || !component || component->getType() != COMPONENT_FORM_HEATSINK ||
+           getMaxHeat() - component->getDamage() >= getHeat();
+}
+
 // if you pass in -1's for x and y, we'll figure out where it can go, and return where it went
 int LogisticsVariant::canAddComponent( LogisticsComponent* pComponent, long& x, long& y ) const
 {
@@ -600,7 +623,7 @@ int LogisticsVariant::canAddComponent( LogisticsComponent* pComponent, long& x, 
 	if ( weight + pComponent->getWeight() > chassis->maxWeight )
 		return COMPONENT_TOO_HEAVY;*/
 
-	if ( getHeat() + pComponent->getHeat() > getMaxHeat() )
+	if (!ignoresHeatLimit() && getHeat() + pComponent->getHeat() > getMaxHeat())
 		return COMPONENT_TOO_HOT;
 
 	if ( pComponent->getType() == COMPONENT_FORM_JUMPJET  )
@@ -800,11 +823,8 @@ int		LogisticsVariant::removeComponent( long xCoord, long yCoord )
 	if ( !info )
 		return -1;
 
-	if ( info->component && info->component->getType() == COMPONENT_FORM_HEATSINK )
-	{
-		if ( getMaxHeat() - info->component->getDamage() < getHeat() )
-			return INSUFFICIENT_HEAT;
-	}
+	if (!canRemoveHeatSink(info->component))
+		return INSUFFICIENT_HEAT;
 
 	
 	if ( !info )

@@ -937,13 +937,16 @@ void MechLabScreen::updateHeatMeter()
 	}
 
 	char text[64];
-	if ( bShowDenom )
+    if (LogisticsVariant::ignoresHeatLimit())
+        snprintf(text, sizeof(text), "%d/OFF", pVariant->getHeat());
+    else if (bShowDenom)
 		sprintf( text, "%ld/%ld", curHeat, maxHeat );
 	else
 		sprintf( text, "%ld/", curHeat );
 
 	textObjects[12].setText( text );
-	attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT-4].setValue( fCurHeat/(float)maxHeat );
+    const float usage = maxHeat > 0 ? fCurHeat / maxHeat : 0.0f;
+    attributeMeters[MECH_LAB_ATTRIBUTE_METER_COUNT-4].setValue(usage > 1.0f ? 1.0f : usage);
 
 }
 
@@ -1758,13 +1761,7 @@ void MechLabScreen::removeComponent( long i, long j )
 }
 bool MechLabScreen::canRemoveComponent( LogisticsComponent* pComp )
 {
-	if ( pComp && pComp->getType() == COMPONENT_FORM_HEATSINK )
-	{
-		if ( pVariant->getMaxHeat() - pComp->getDamage() < pVariant->getHeat() )
-			return 0;
-	}
-
-	return 1;
+    return pVariant && pVariant->canRemoveHeatSink(pComp);
 }
 
 

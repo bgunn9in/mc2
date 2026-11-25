@@ -426,7 +426,72 @@ namespace
 constexpr long cheatPanelWidth = 376;
 constexpr long cheatRowsTop = 49;
 constexpr long cheatRowHeight = 30;
-constexpr int cheatRowCount = 4;
+constexpr int cheatRowCount = 5;
+constexpr long cheatPanelHeight = 236;
+constexpr long pilotPanelWidth = 568;
+constexpr long pilotPanelHeight = 414;
+constexpr int pilotSkillRows = (NUM_SPECIALTY_SKILLS + 1) / 2;
+constexpr float maxEditedPilotSkill = 80.0f;
+
+GUI_RECT pilotStatRect(const GUI_RECT& panel, int row)
+{
+    const long x = panel.left + 12 + 184 * row;
+    return {x, panel.top + 59, x + 176, panel.top + 87};
+}
+
+GUI_RECT pilotStatButton(const GUI_RECT& rect, int direction)
+{
+    if (direction < 0)
+        return {rect.left, rect.top, rect.left + 25, rect.bottom};
+    return {rect.right - 25, rect.top, rect.right, rect.bottom};
+}
+
+GUI_RECT pilotSkillRect(const GUI_RECT& panel, int skill)
+{
+    const long x = panel.left + 12 + 276 * (skill / pilotSkillRows);
+    const long y = panel.top + 102 + 23 * (skill % pilotSkillRows);
+    return {x, y, x + 268, y + 20};
+}
+
+GUI_RECT pilotBackRect(const GUI_RECT& panel)
+{
+    return {panel.right - 123, panel.bottom - 29, panel.right - 12, panel.bottom - 9};
+}
+
+float clampPilotValue(float value, float minimum, float maximum)
+{
+    return value < minimum ? minimum : (value > maximum ? maximum : value);
+}
+
+void setPilotSkill(MechWarrior& pilot, int skill, float value)
+{
+    pilot.skillRank[skill] = clampPilotValue(value, 1.0f, maxEditedPilotSkill);
+    pilot.skills[skill] = static_cast<char>(pilot.skillRank[skill]);
+}
+
+bool stepPilotRank(MechWarrior& pilot, int direction)
+{
+    const int rank = pilot.getRank() + direction;
+    if (rank < WARRIOR_RANK_GREEN || rank > WARRIOR_RANK_ACE)
+        return false;
+
+    const float averages[NUM_WARRIOR_RANKS] = {45.0f, 55.0f, 65.0f, 75.0f, 80.0f};
+    const float total = 2.0f * averages[rank];
+    const float balance = pilot.skillRank[MWS_GUNNERY] - pilot.skillRank[MWS_PILOTING];
+    const float minimum = total - maxEditedPilotSkill > 1.0f ? total - maxEditedPilotSkill : 1.0f;
+    const float maximum = total - 1.0f < maxEditedPilotSkill ? total - 1.0f : maxEditedPilotSkill;
+    const float gunnery = clampPilotValue((total + balance) / 2.0f, minimum, maximum);
+    setPilotSkill(pilot, MWS_GUNNERY, gunnery);
+    setPilotSkill(pilot, MWS_PILOTING, total - gunnery);
+    return true;
+}
+
+void syncEditedPilot(MechWarrior& pilot)
+{
+    pilot.calcRank();
+    if (LogisticsPilot* campaignPilot = LogisticsData::instance->getPilot(pilot.getName()))
+        campaignPilot->applyEditedSkills(pilot);
+}
 constexpr int campaignCreditGrant = 100000;
 constexpr int supportCreditGrant = 10000;
 constexpr int maxCheatBalance = 1000000000;
@@ -453,8 +518,8 @@ int creditGrant(int balance, int grant)
 GUI_RECT MissionInterfaceManager::cheatMenuRect() const
 {
     const long left = (controlGui.getHudWidth() - cheatPanelWidth) / 2;
-    const long top = (controlGui.getHudHeight() - 206) / 3;
-    return {left, top, left + cheatPanelWidth, top + 206};
+    const long top = (controlGui.getHudHeight() - cheatPanelHeight) / 3;
+    return {left, top, left + cheatPanelWidth, top + cheatPanelHeight};
 }
 
 bool MissionInterfaceManager::hasInvulnerabilityCheat() const
@@ -465,6 +530,122 @@ bool MissionInterfaceManager::hasInvulnerabilityCheat() const
 bool MissionInterfaceManager::hasRapidFireCheat() const
 {
     return cheatRapidFire;
+}
+
+MechWarrior* MissionInterfaceManager::getSelectedCheatPilot() const
+{
+    if (!Team::home || !Commander::home)
+        return nullptr;
+
+    MechWarrior* selected = nullptr;
+    for (long i = 0; i < Team::home->getRosterSize(); ++i)
+    {
+        Mover* mover = Team::home->getMover(i);
+        if (!mover || !mover->isSelected() || !mover->isMech() || mover->isDestroyed() ||
+            mover->getCommanderId() != Commander::home->getId() || !mover->getPilot() ||
+            mover->getPilot()->getStatus() == WARRIOR_STATUS_DEAD)
+            continue;
+        if (selected)
+            return nullptr;
+        selected = mover->getPilot();
+    }
+    return selected;
+}
+
+GUI_RECT MissionInterfaceManager::pilotEditorRect() const
+{
+    const long left = (controlGui.getHudWidth() - pilotPanelWidth) / 2;
+    const long top = (controlGui.getHudHeight() - pilotPanelHeight) / 2;
+    return {left, top, left + pilotPanelWidth, top + pilotPanelHeight};
+}
+
+void MissionInterfaceManager::updatePilotEditor(MechWarrior& pilot, long x, long y)
+{
+    const GUI_RECT panel = pilotEditorRect();
+    if (cheatRowContains(pilotBackRect(panel), x, y))
+    {
+        pilotEditorOpen = false;
+        return;
+    }
+
+    for (int field = 0; field < 3; ++field)
+    {
+        const GUI_RECT rect = pilotStatRect(panel, field);
+        for (int direction = -1; direction <= 1; direction += 2)
+        {
+            if (!cheatRowContains(pilotStatButton(rect, direction), x, y))
+                continue;
+            if (field == 0)
+            {
+                if (!stepPilotRank(pilot, direction))
+                    return;
+            }
+            else
+            {
+                const int skill = field == 1 ? MWS_GUNNERY : MWS_PILOTING;
+                setPilotSkill(pilot, skill, pilot.skillRank[skill] + direction);
+            }
+            syncEditedPilot(pilot);
+            return;
+        }
+    }
+
+    for (int skill = 0; skill < NUM_SPECIALTY_SKILLS; ++skill)
+    {
+        if (!cheatRowContains(pilotSkillRect(panel, skill), x, y))
+            continue;
+        pilot.specialtySkills[skill] = !pilot.specialtySkills[skill];
+        syncEditedPilot(pilot);
+        return;
+    }
+}
+
+void MissionInterfaceManager::renderPilotEditor(MechWarrior& pilot, long mouseX, long mouseY)
+{
+    const GUI_RECT panel = pilotEditorRect();
+    drawRect(panel, 0xf018222a);
+    drawRect({panel.left, panel.top, panel.right, panel.top + 2}, 0xff6ba6c7);
+
+    char title[96];
+    snprintf(title, sizeof(title), "PILOT EDITOR  /  %s", pilot.getCallsign());
+    hotKeyHeaderFont.render(title, panel.left + 12, panel.top + 13, pilotPanelWidth - 24, 28, 0xff8bc6e4, false, 0);
+
+    char rank[32], gunnery[48], piloting[48], rankLabel[48];
+    const int rankId = pilot.getRank() == WARRIOR_RANK_ACE ? IDS_ACE : IDS_GREEN + pilot.getRank();
+    cLoadString(rankId, rank, sizeof(rank));
+    snprintf(rankLabel, sizeof(rankLabel), "Rank: %s", rank);
+    snprintf(gunnery, sizeof(gunnery), "Gunnery: %ld", pilot.getSkill(MWS_GUNNERY));
+    snprintf(piloting, sizeof(piloting), "Piloting: %ld", pilot.getSkill(MWS_PILOTING));
+    const char* stats[] = {rankLabel, gunnery, piloting};
+    for (int field = 0; field < 3; ++field)
+    {
+        const GUI_RECT rect = pilotStatRect(panel, field);
+        drawRect(rect, 0xff263b47);
+        hotKeyFont.render(stats[field], rect.left + 31, rect.top + 7, 115, 18, 0xffedf4f7, false, 0);
+        for (int direction = -1; direction <= 1; direction += 2)
+        {
+            const GUI_RECT button = pilotStatButton(rect, direction);
+            drawRect(button, cheatRowContains(button, mouseX, mouseY) ? 0xff52788b : 0xff385c70);
+            hotKeyFont.render(direction < 0 ? "-" : "+", button.left + 9, button.top + 7, 15, 18, 0xffedf4f7, false, 0);
+        }
+    }
+
+    for (int skill = 0; skill < NUM_SPECIALTY_SKILLS; ++skill)
+    {
+        const GUI_RECT row = pilotSkillRect(panel, skill);
+        const bool enabled = pilot.specialtySkills[skill];
+        const bool hover = cheatRowContains(row, mouseX, mouseY);
+        drawRect(row, hover ? 0xff385c70 : 0xff263b47);
+        char label[128];
+        cLoadString(IDS_SPECIALTY + skill, label, sizeof(label));
+        hotKeyFont.render(label, row.left + 7, row.top + 3, 212, 17, 0xffedf4f7, false, 0);
+        hotKeyFont.render(enabled ? "ON" : "OFF", row.right - 7, row.top + 3, 0, 17,
+                          enabled ? 0xffa4df9f : 0xffadc4cf, false, 1);
+    }
+
+    const GUI_RECT back = pilotBackRect(panel);
+    drawRect(back, cheatRowContains(back, mouseX, mouseY) ? 0xff385c70 : 0xff263b47);
+    hotKeyFont.render("Back / Esc", back.left + 8, back.top + 3, back.right - back.left - 14, 17, 0xffedf4f7, false, 0);
 }
 
 bool MissionInterfaceManager::updateCheatMenu()
@@ -483,8 +664,15 @@ bool MissionInterfaceManager::updateCheatMenu()
         return cheatMenuOpen;
     }
 
-    if (toggle || gos_GetKeyStatus(KEY_ESCAPE) == KEY_PRESSED)
+    const bool escape = gos_GetKeyStatus(KEY_ESCAPE) == KEY_PRESSED;
+    if (escape && pilotEditorOpen && !toggle)
     {
+        pilotEditorOpen = false;
+        return true;
+    }
+    if (toggle || escape)
+    {
+        pilotEditorOpen = false;
         cheatMenuOpen = false;
         togglePauseWithoutMenu();
         return true;
@@ -495,6 +683,18 @@ bool MissionInterfaceManager::updateCheatMenu()
     const long y = userInput->getMouseY() / scale;
     const GUI_RECT panel = cheatMenuRect();
     const bool click = userInput->leftMouseReleased() && !userInput->wasLeftDrag();
+    if (pilotEditorOpen)
+    {
+        if (MechWarrior* pilot = getSelectedCheatPilot())
+        {
+            if (click)
+                updatePilotEditor(*pilot, x, y);
+        }
+        else
+            pilotEditorOpen = false;
+        return true;
+    }
+
     auto& logistics = *LogisticsData::instance;
 
     for (int row = 0; row < cheatRowCount; ++row)
@@ -517,6 +717,9 @@ bool MissionInterfaceManager::updateCheatMenu()
         case 3:
             cheatRapidFire = !cheatRapidFire;
             break;
+        case 4:
+            pilotEditorOpen = getSelectedCheatPilot() != nullptr;
+            break;
         }
         break;
     }
@@ -533,6 +736,15 @@ void MissionInterfaceManager::renderCheatMenu()
     gos_SetRenderState(gos_State_ZWrite, 0);
     gos_SetRenderState(gos_State_ZCompare, 0);
 
+    if (pilotEditorOpen)
+    {
+        if (MechWarrior* pilot = getSelectedCheatPilot())
+            renderPilotEditor(*pilot, userInput->getMouseX() / scale, userInput->getMouseY() / scale);
+        if (scale > 1.0f)
+            gos_Set2DCanvasSize(Environment.screenWidth, Environment.screenHeight);
+        return;
+    }
+
     const GUI_RECT panel = cheatMenuRect();
     const int left = panel.left + 12;
     const int width = panel.right - left - 12;
@@ -542,13 +754,14 @@ void MissionInterfaceManager::renderCheatMenu()
 
     auto& logistics = *LogisticsData::instance;
     const char* labels[cheatRowCount] = {
-        "1   +100,000 C-bills", "2   +10,000 RP", "3   Invulnerability", "4   Rapid fire"
+        "1   +100,000 C-bills", "2   +10,000 RP", "3   Invulnerability", "4   Rapid fire", "5   Pilot editor"
     };
     char campaignBalance[32], supportBalance[32];
     snprintf(campaignBalance, sizeof(campaignBalance), "%d", logistics.getCBills());
     snprintf(supportBalance, sizeof(supportBalance), "%d", logistics.getResourcePoints());
     const char* values[cheatRowCount] = {
-        campaignBalance, supportBalance, cheatInvulnerability ? "ON" : "OFF", cheatRapidFire ? "ON" : "OFF"
+        campaignBalance, supportBalance, cheatInvulnerability ? "ON" : "OFF", cheatRapidFire ? "ON" : "OFF",
+        getSelectedCheatPilot() ? "Open" : "Select one mech"
     };
     const long x = userInput->getMouseX() / scale;
     const long y = userInput->getMouseY() / scale;
