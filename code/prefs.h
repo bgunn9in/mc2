@@ -40,6 +40,7 @@ public:
     int resolutionX;
     int resolutionY;
     int displayNumber;
+    int hudScale;
 
 	bool fullScreen;
 	long gammaLevel;

@@ -127,8 +127,8 @@ void ForceGroupBar::update( )
 		bSelect = 0;
 
 	Stuff::Vector2DOf<long> screen;
-	screen.x = userInput->getMouseX();
-	screen.y = userInput->getMouseY();
+	screen.x = userInput->getMouseX() / ControlGui::instance->getHudScale();
+	screen.y = userInput->getMouseY() / ControlGui::instance->getHudScale();
 
 	 if ( screen.x > FORCEGROUP_LEFT && screen.x < FORCEGROUP_LEFT + FORCEGROUP_WIDTH
 		  && screen.y > FORCEGROUP_TOP )

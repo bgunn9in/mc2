@@ -57,6 +57,7 @@ CPrefs::CPrefs() {
 	renderer = 0;
     resolutionX = 800;
     resolutionY = 600;
+    hudScale = 100;
     bitDepth = 32;
     displayNumber = 0;
 
@@ -187,6 +188,12 @@ int CPrefs::load( const char* pFileName ) {
 			result = prefsFile->readIdInt("ResolutionY",resolutionY);
 			if (result != NO_ERR)
 				resolutionY = 600;
+
+			result = prefsFile->readIdInt("HudScale", hudScale);
+			if (result == NO_ERR && hudScale == 2)
+				hudScale = 200;
+			else if (result != NO_ERR || (hudScale != 125 && hudScale != 200))
+				hudScale = 100;
 
 			result = prefsFile->readIdBoolean("FullScreen",fullScreen);
 			if (result != NO_ERR)
@@ -331,6 +338,7 @@ int CPrefs::save() {
 			result = prefsFile->writeIdLong("Rasterizer",renderer);
 			result = prefsFile->writeIdLong("ResolutionX",resolutionX);
 			result = prefsFile->writeIdLong("ResolutionY",resolutionY);
+			result = prefsFile->writeIdLong("HudScale", hudScale);
 			result = prefsFile->writeIdBoolean("FullScreen",fullScreen);
 			result = prefsFile->writeIdLong("DisplayNumber",displayNumber);
 			result = prefsFile->writeIdLong("Brightness",gammaLevel);

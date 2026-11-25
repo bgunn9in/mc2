@@ -7423,7 +7423,8 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	if ((getTeam() && Team::noPain[getTeamId()]) || localInvulnerable)
 		return(NO_ERR);
 
-	if (!MPlayer && CantTouchThis && pilot->onHomeTeam())
+	if ((!MPlayer && CantTouchThis && pilot->onHomeTeam()) ||
+		(mission && mission->protectsPlayerUnit(getCommanderId())))
 		return(NO_ERR);
 
 	//-----------------

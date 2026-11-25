@@ -1149,6 +1149,7 @@ class gosRenderer {
 		vec4 getRenderViewport() { return render_viewport_; }
 
 		const mat4& getProj2Screen() { return projection_; }
+        void set2DCanvasSize(int width, int height);
 
         void setRenderState(gos_RenderState RenderState, int Value) {
             renderStates_[RenderState] = Value;
@@ -1299,17 +1300,23 @@ const std::string gosRenderer::s_Foreground = std::string("Foreground");
 
 static GLuint gVAO = 0;
 
+void gosRenderer::set2DCanvasSize(int width, int height)
+{
+    projection_ = mat4(2.0f / width, 0, 0.0f, -1.0f,
+                      0, -2.0f / height, 0.0f, 1.0f,
+                      0, 0, 1.0f, 0.0f,
+                      0, 0, 0.0f, 1.0f);
+}
+
+void gos_Set2DCanvasSize(int width, int height)
+{
+    g_gos_renderer->set2DCanvasSize(width, height);
+}
+
 void gosRenderer::init() {
     initRenderStates();
 
-    // x = 1/w; x =2*x - 1;
-    // y = 1/h; y= 1- y; y =2*y - 1;
-    // z = z;
-    projection_ = mat4(
-            2.0f / (float)width_, 0, 0.0f, -1.0f,
-            0, -2.0f / (float)height_, 0.0f, 1.0f,
-            0, 0, 1.0f, 0.0f,
-            0, 0, 0.0f, 1.0f);
+    set2DCanvasSize(width_, height_);
 
 	graphics::get_drawable_size(win_h_, &Environment.drawableWidth, &Environment.drawableHeight);
 
@@ -1626,13 +1633,7 @@ void gosRenderer::handleEvents()
         width_ = reqWidth;
         height_ = reqHeight;
 
-        // x = 1/w; x =2*x - 1;
-        // y = 1/h; y= 1- y; y =2*y - 1;
-        // z = z;
-        projection_ = mat4(2.0f / (float)width_, 0, 0.0f, -1.0f,
-                0, -2.0f / (float)height_, 0.0f, 1.0f,
-                0, 0, 1.0f, 0.0f,
-                0, 0, 0.0f, 1.0f);
+        set2DCanvasSize(width_, height_);
 
         if(graphics::resize_window(win_h_, width_, height_))
 		{

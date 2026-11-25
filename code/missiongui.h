@@ -185,6 +185,13 @@ public:
 		bool						bForcedShot;
 		bool						bAimedShot;
 		
+        bool cheatMenuOpen = false;
+        bool cheatInvulnerability = false;
+        bool cheatRapidFire = false;
+        bool updateCheatMenu();
+        void renderCheatMenu();
+        GUI_RECT cheatMenuRect() const;
+
 		static	MissionInterfaceManager* s_instance;
 				
 	public:
@@ -200,6 +207,8 @@ public:
 		}
 
 		static MissionInterfaceManager* instance(){ return s_instance; }
+        bool hasInvulnerabilityCheat() const;
+        bool hasRapidFireCheat() const;
 		
 		void init (void);
 		

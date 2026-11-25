@@ -68,8 +68,8 @@ void GameTacMap::init( unsigned char* bitmapData, int dataSize )
 void GameTacMap::update()
 {
 	Stuff::Vector2DOf<long> screen;
-	screen.x = userInput->getMouseX();
-	screen.y = userInput->getMouseY();
+	screen.x = userInput->getMouseX() / ControlGui::instance->getHudScale();
+	screen.y = userInput->getMouseY() / ControlGui::instance->getHudScale();
 
 	float width = right - left;
 	float height = bottom - top;

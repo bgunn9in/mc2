@@ -1728,34 +1728,26 @@ DWORD bgrTorgb (DWORD frontRGB)
 }
 
 //-----------------------------------------------------------------------------
+void Mech3DAppearance::storePaintScheme(DWORD mcRed, DWORD mcGreen, DWORD mcBlue)
+{
+    // GameOS exposes locked texture pixels as 0xAARRGGBB.
+    psRed = mcRed;
+    psGreen = mcGreen;
+    psBlue = mcBlue;
+}
+
 void Mech3DAppearance::setPaintScheme (DWORD mcRed, DWORD mcGreen, DWORD mcBlue)
 {
-#if defined(BGR)
-	// These come into here bgr instead of RGB.  CONVERT!
-	psRed = bgrTorgb(mcRed);
-	psBlue = bgrTorgb(mcBlue);
-	psGreen = bgrTorgb(mcGreen);
-#else /*BGR*/
-	psRed = mcRed;
-	psBlue = mcBlue;
-	psGreen = mcGreen;
-#endif /*BGR*/
-
-	setPaintScheme();	
-}	
+    storePaintScheme(mcRed, mcGreen, mcBlue);
+    setPaintScheme();
+}
 
 //-----------------------------------------------------------------------------
 void Mech3DAppearance::getPaintScheme( DWORD& red, DWORD& green, DWORD& blue )
 {
-#if defined(BGR)
-	red = bgrTorgb(psRed);
-	blue = bgrTorgb(psBlue);
-	green = bgrTorgb(psGreen);
-#else /*BGR*/
-	red = psRed;
-	blue = psBlue;
-	green = psGreen;
-#endif /*BGR*/
+    red = psRed;
+    green = psGreen;
+    blue = psBlue;
 }
 
 //-----------------------------------------------------------------------------
@@ -1822,10 +1814,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 			/* In this case, the texture returned should already have the paint scheme
 			applied. */
 
-			//Still need to store psRed/psGreen/psBlue!!!!
-			psRed = red;
-			psGreen = green;
-			psBlue = blue;
+			storePaintScheme(red, green, blue);
 			return;
 		}
 	}

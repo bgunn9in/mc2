@@ -97,8 +97,8 @@ void PauseWindow::update()
 		
 	}
 	
-	long mouseX = userInput->getMouseX();
-	long mouseY = userInput->getMouseY();
+	long mouseX = userInput->getMouseX() / ControlGui::instance->getHudScale();
+	long mouseY = userInput->getMouseY() / ControlGui::instance->getHudScale();
 
 	gosEnum_KeyIndex key;
 	bool bShift, bCtrl, bAlt;
@@ -127,8 +127,8 @@ void PauseWindow::update()
 			{
 				t0 = moveInfo[j].time;
 				t1 = moveInfo[j + 1].time;
-				p0 = -(800.f - moveInfo[j].position)  + ((float)Environment.screenWidth);
-				p1 = -(800.f - moveInfo[j + 1].position) + ((float)Environment.screenWidth);
+				p0 = -(800.f - moveInfo[j].position)  + ((float)ControlGui::instance->getHudWidth());
+				p1 = -(800.f - moveInfo[j + 1].position) + ((float)ControlGui::instance->getHudWidth());
 				break;
 			}
 		}
@@ -171,8 +171,8 @@ void PauseWindow::update()
 				helpTextHeaderID = buttonData[i].helpTextHeader;
 				helpTextID = buttonData[i].helpTextID;
 
-				long lastX = mouseX - userInput->getMouseXDelta();
-				long lastY = mouseY - userInput->getMouseYDelta();
+				long lastX = mouseX - userInput->getMouseXDelta() / ControlGui::instance->getHudScale();
+				long lastY = mouseY - userInput->getMouseYDelta() / ControlGui::instance->getHudScale();
 
 				if ( buttons[i].location[0].x >= lastX || lastX >= buttons[i].location[2].x
 				|| lastY <= buttons[i].location[0].y || lastY >= buttons[i].location[1].y )
@@ -204,7 +204,7 @@ void PauseWindow::update()
 	if ( currentTime == 0 )
 	{
 		currentTime = .0001f;
-		currentPos = -(800 - PauseWindow::moveInfo[0].position) + ((float)Environment.screenWidth);
+		currentPos = -(800 - PauseWindow::moveInfo[0].position) + ((float)ControlGui::instance->getHudWidth());
 		float delta = backgrounds[0].left - currentPos;
 
 		for ( int i = 0; i < buttonCount; i++ )
@@ -279,12 +279,12 @@ void PauseWindow::render()
 		0xff5c96c2, 0, 3 );
 		
 
-	if ( bPromptToQuit || bPromptToAbort )
-	{
-		LogisticsOKDialog::instance()->render();
-	}
+}
 
-
+void PauseWindow::renderPrompt()
+{
+    if (bPromptToQuit || bPromptToAbort)
+        LogisticsOKDialog::instance()->render();
 }
 
 void PauseWindow::init( FitIniFile& file )

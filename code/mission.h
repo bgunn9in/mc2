@@ -270,6 +270,8 @@ class Mission
 		
 		long update (void);
 		long render (void);
+        bool protectsPlayerUnit(long commanderId) const;
+        float playerWeaponRecycleScale(long commanderId) const;
 		
 		void destroy (bool initLogistics = true);
 		

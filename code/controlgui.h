@@ -170,6 +170,10 @@ class ControlGui
 		const char* getVehicleName( long& ID );
 		const char* getVehicleNameFromID (long ID);
 		void swapResolutions( int newResolutionX, int resolutionY );
+        static bool supportsHudScaling(int width, int height) { return width >= 2560 && height >= 1440; }
+        float getHudScale() const { return hudScale; }
+        int getHudWidth() const { return Environment.screenWidth / hudScale; }
+        int getHudHeight() const { return Environment.screenHeight / hudScale; }
 
 		GameTacMap						tacMap;
 		ForceGroupBar					forceGroupBar;
@@ -291,6 +295,8 @@ class ControlGui
 		};
 
 	private:
+        float hudScale = 1.0f;
+
 
 		struct ChatInfo
 		{
