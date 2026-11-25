@@ -2212,6 +2212,7 @@ struct gos_DisplayArea {
 gos_DisplayArea gos_GetDisplayArea();
 void gos_ApplyDisplayArea(const gos_DisplayArea& area);
 void gos_SetClassicAspect(bool enabled);
+void gos_Set2DCanvasSize(int width, int height);
 
 //
 // Draw points, pass a pointer to an array of gos_VERTEX's - every vertex is a new point

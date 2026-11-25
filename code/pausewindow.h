@@ -39,6 +39,7 @@ class PauseWindow
 
 		void update();
 		void render();
+		void renderPrompt();
 
 		void init( FitIniFile& file );
 

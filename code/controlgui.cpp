@@ -37,6 +37,9 @@ controlGui.cpp			: Implementation of the controlGui component.
 #include"malloc.h"
 
 #include"chatwindow.h"
+#include"prefs.h"
+
+extern CPrefs prefs;
 
 
 
@@ -72,7 +75,7 @@ extern bool useLeftRightMouseProfile;
 extern bool drawGUIOn;				//Used to shut off GUI for Screen Shots and Movie Mode
 extern bool paintingMyVtol;
 
-#define TEXT_SKIP 5.f * Environment.screenHeight/600.f
+#define TEXT_SKIP 5.f * getHudHeight()/600.f
 #define CHAT_DISPLAY_TIME 30
 
 int __cdecl sortStats( const void* pPlayer1, const void* pPlayer2 );
@@ -306,6 +309,9 @@ bool ControlGui::animateTacMap (int buttonId,float timeToScroll,long numFlashes)
 
 void ControlGui::render( bool bPaused )
 {
+    if (hudScale > 1.0f)
+        gos_Set2DCanvasSize(getHudWidth(), getHudHeight());
+
 	if (drawGUIOn)
 	{
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
@@ -450,14 +456,18 @@ void ControlGui::render( bool bPaused )
 			}
 			else if ( tabFlashTime >  .25 )
 			{
-				float scaleX = Environment.screenWidth <= 1024 ? Environment.screenWidth : 1024;
-				float scaleY = Environment.screenHeight <= 768 ? Environment.screenHeight : 768;
+				float scaleX = getHudWidth() <= 1024 ? getHudWidth() : 1024;
+				float scaleY = getHudHeight() <= 768 ? getHudHeight() : 768;
 				GUI_RECT rect = { (long)(51 * scaleX/640.f + ControlGui::hiResOffsetX), (long)(317 * scaleY/480.f + ControlGui::hiResOffsetY),
 								(long)(74 *scaleX/640.f + ControlGui::hiResOffsetX), (long)(337 * scaleY/480.f  + ControlGui::hiResOffsetY)};
 				drawRect( rect, 0xff000000 );
 			}
 		}
 	}
+    if (hudScale > 1.0f)
+        gos_Set2DCanvasSize(Environment.screenWidth, Environment.screenHeight);
+    if (drawGUIOn && bPaused)
+        pauseWnd->renderPrompt();
 }
 
 
@@ -521,8 +531,8 @@ void ControlGui::renderResults()
 			{
 				t0 = missionResultsMoveInfo[j].time;
 				t1 = missionResultsMoveInfo[j + 1].time;
-				p0 = (missionResultsMoveInfo[j].position)	* ((float)Environment.screenWidth)/640.f;
-				p1 = (missionResultsMoveInfo[j + 1].position) * ((float)Environment.screenWidth)/640.f;
+				p0 = (missionResultsMoveInfo[j].position)	* ((float)getHudWidth())/640.f;
+				p1 = (missionResultsMoveInfo[j + 1].position) * ((float)getHudWidth())/640.f;
 				break;
 			}
 		}
@@ -539,7 +549,7 @@ void ControlGui::renderResults()
 		{
 			delta = missionResultsMoveInfo[OBJECTVE_MOVE_COUNT - 1].position - missionStatusInfos[0].location[0].y;
 			// grey down the screen
-			GUI_RECT rect = { 0, 0, Environment.screenWidth, Environment.screenHeight };
+			GUI_RECT rect = { 0, 0, getHudWidth(), getHudHeight() };
 			drawEmptyRect( rect, 0x44000000 );
 			if ( resultsTime < missionResultsMoveInfo[OBJECTVE_MOVE_COUNT - 1].time + .25 )
 				startObjectives( 1 );
@@ -587,7 +597,7 @@ void ControlGui::renderResults()
 		if ( !neverEndingStory && (fadeTime > 0.f) )
 		{
 			long color = interpolateColor( 0x00000000, 0xff000000, fadeTime/1.0f );
-			GUI_RECT rect = { 0,0, Environment.screenWidth, Environment.screenHeight };
+			GUI_RECT rect = { 0,0, getHudWidth(), getHudHeight() };
 			drawRect( rect, color );
 		}
 
@@ -624,8 +634,8 @@ void ControlGui::RenderObjectives()
 			{
 				t0 = objectiveMoveInfo[j].time;
 				t1 = objectiveMoveInfo[j + 1].time;
-				p0 = (objectiveMoveInfo[j].position)	* ((float)Environment.screenWidth)/640.f;
-				p1 = (objectiveMoveInfo[j + 1].position) * ((float)Environment.screenWidth)/640.f;
+				p0 = (objectiveMoveInfo[j].position)	* ((float)getHudWidth())/640.f;
+				p1 = (objectiveMoveInfo[j + 1].position) * ((float)getHudWidth())/640.f;
 				break;
 			}
 		}
@@ -956,8 +966,8 @@ void ControlGui::update( bool bPaused, bool bLOS )
 		getButton( idToUnPress )->press( false );
 	}
 	
-	float mouseX = userInput->getMouseX();
-	float mouseY = userInput->getMouseY();
+	float mouseX = (userInput->getMouseX() / hudScale);
+	float mouseY = (userInput->getMouseY() / hudScale);
 
 	
 	// also going to initialize buttons here
@@ -972,8 +982,8 @@ void ControlGui::update( bool bPaused, bool bLOS )
 				helpTextHeaderID = buttonData[i].helpTextHeader;
 				helpTextID = buttonData[i].helpTextID;
 				bMouseInButton = true;
-				long lastX = mouseX - userInput->getMouseXDelta();
-				long lastY = mouseY - userInput->getMouseYDelta();
+				long lastX = mouseX - userInput->getMouseXDelta() / hudScale;
+				long lastY = mouseY - userInput->getMouseYDelta() / hudScale;
 
 				if ( buttons[i].location[0].x > lastX || lastX > buttons[i].location[2].x
 				|| lastY < buttons[i].location[0].y || lastY > buttons[i].location[1].y )
@@ -1184,10 +1194,10 @@ void ControlGui::update( bool bPaused, bool bLOS )
 
 	bool bMouseInsideTacArea = 0;
 
-	if ( rectInfos[0].rect.left <= userInput->getMouseX()
-		&& rectInfos[0].rect.right >= userInput->getMouseX()
-		&& rectInfos[0].rect.top <= userInput->getMouseY()
-		&& rectInfos[0].rect.bottom >= userInput->getMouseY() )
+	if ( rectInfos[0].rect.left <= (userInput->getMouseX() / hudScale)
+		&& rectInfos[0].rect.right >= (userInput->getMouseX() / hudScale)
+		&& rectInfos[0].rect.top <= (userInput->getMouseY() / hudScale)
+		&& rectInfos[0].rect.bottom >= (userInput->getMouseY() / hudScale) )
 	{
 		bMouseInsideTacArea = true; 
 	}
@@ -1238,10 +1248,10 @@ bool ControlGui::isOverTacMap()
 {
 	bool bMouseInsideTacArea = 0;
 
-	if ( rectInfos[0].rect.left <= userInput->getMouseX()
-		&& rectInfos[0].rect.right >= userInput->getMouseX()
-		&& rectInfos[0].rect.top <= userInput->getMouseY()
-		&& rectInfos[0].rect.bottom >= userInput->getMouseY() )
+	if ( rectInfos[0].rect.left <= (userInput->getMouseX() / hudScale)
+		&& rectInfos[0].rect.right >= (userInput->getMouseX() / hudScale)
+		&& rectInfos[0].rect.top <= (userInput->getMouseY() / hudScale)
+		&& rectInfos[0].rect.bottom >= (userInput->getMouseY() / hudScale) )
 	{
 		bMouseInsideTacArea = true; 
 	}
@@ -1254,6 +1264,8 @@ bool ControlGui::isOverTacMap()
 
 bool ControlGui::inRegion( int mouseX, int mouseY, bool bPaused )
 {
+	mouseX /= hudScale;
+	mouseY /= hudScale;
 
 	for ( int i = 0; i < LAST_COMMAND; i++ )
 	{
@@ -1787,8 +1799,8 @@ void ControlGui::updateVehicleTab(int mouseX, int mouseY, bool bLOS )
 					}
 				}
 		
-				long lastX = mouseX - userInput->getMouseXDelta();
-				long lastY = mouseY - userInput->getMouseYDelta();
+				long lastX = mouseX - userInput->getMouseXDelta() / hudScale;
+				long lastY = mouseY - userInput->getMouseYDelta() / hudScale;
 				if (  vehicleButtons[i].location[0].x >= lastX || lastX >= vehicleButtons[i].location[2].x
 					|| lastY <= vehicleButtons[i].location[0].y || lastY >= vehicleButtons[i].location[1].y  )
 					soundSystem->playDigitalSample( LOG_HIGHLIGHTBUTTONS );
@@ -2142,7 +2154,7 @@ void ControlGui::renderHelpText()
 		height = helpFont.height( buffer, width );
 
 		gos_TextStringLength( &width, &height, buffer );
-		gos_TextSetRegion( HELPAREA_LEFT, HELPAREA_BOTTOM - 3 * height, Environment.screenWidth, Environment.screenHeight );
+		gos_TextSetRegion( HELPAREA_LEFT, HELPAREA_BOTTOM - 3 * height, getHudWidth(), getHudHeight() );
 		drawShadowText( 0xffffffff, 0xff000000, helpFont.getTempHandle(),
 			HELPAREA_LEFT, HELPAREA_BOTTOM - height, true, buffer, false, 
 			helpFont.getSize() );
@@ -2632,6 +2644,9 @@ void ControlGui::initRects( FitIniFile& file )
 
 void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 {
+    hudScale = supportsHudScaling(resolutionX, resolutionY) ? prefs.hudScale / 100.0f : 1.0f;
+    resolutionX /= hudScale;
+    resolutionY /= hudScale;
 	FitIniFile buttonFile;
 	char path[256];
 	strcpy( path, artPath );

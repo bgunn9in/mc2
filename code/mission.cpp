@@ -201,6 +201,20 @@ extern GameLog* CombatLog;
 float CheatHitDamage = 0.0f;
 #endif
 
+bool Mission::protectsPlayerUnit(long commanderId) const
+{
+    return !MPlayer && missionInterface && missionInterface->hasInvulnerabilityCheat() &&
+           Commander::home && commanderId == Commander::home->getId();
+}
+
+float Mission::playerWeaponRecycleScale(long commanderId) const
+{
+    if (!MPlayer && missionInterface && missionInterface->hasRapidFireCheat() &&
+        Commander::home && commanderId == Commander::home->getId())
+        return 0.25f;
+    return 1.0f;
+}
+
 bool neverEndingStory = false;
 
 void GetBlockedDoorCells (int moveLevel, int door, char* openCells);

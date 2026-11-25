@@ -4297,7 +4297,8 @@ long GroundVehicle::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultipl
 	if (getTeam() && Team::noPain[getTeamId()])
 		return(NO_ERR);
 
-	if (!MPlayer && CantTouchThis && pilot->onHomeTeam())
+	if ((!MPlayer && CantTouchThis && pilot->onHomeTeam()) ||
+		(mission && mission->protectsPlayerUnit(getCommanderId())))
 		return(NO_ERR);
 
 	if (addMultiplayChunk)

@@ -421,6 +421,153 @@ void MissionInterfaceManager::setTutorialText(const char *text)
 	controlGui.setChatText(tutorialPlayerName,text, 0x00ffffff, 0 );
 }
 
+namespace
+{
+constexpr long cheatPanelWidth = 376;
+constexpr long cheatRowsTop = 49;
+constexpr long cheatRowHeight = 30;
+constexpr int cheatRowCount = 4;
+constexpr int campaignCreditGrant = 100000;
+constexpr int supportCreditGrant = 10000;
+constexpr int maxCheatBalance = 1000000000;
+
+GUI_RECT cheatRowRect(const GUI_RECT& panel, int row)
+{
+    const long y = panel.top + cheatRowsTop + row * cheatRowHeight;
+    return {panel.left + 12, y, panel.right - 12, y + cheatRowHeight - 3};
+}
+
+bool cheatRowContains(const GUI_RECT& rect, long x, long y)
+{
+    return x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom;
+}
+
+int creditGrant(int balance, int grant)
+{
+    if (balance <= maxCheatBalance - grant)
+        return grant;
+    return balance < maxCheatBalance ? maxCheatBalance - balance : 0;
+}
+}
+
+GUI_RECT MissionInterfaceManager::cheatMenuRect() const
+{
+    const long left = (controlGui.getHudWidth() - cheatPanelWidth) / 2;
+    const long top = (controlGui.getHudHeight() - 206) / 3;
+    return {left, top, left + cheatPanelWidth, top + 206};
+}
+
+bool MissionInterfaceManager::hasInvulnerabilityCheat() const
+{
+    return cheatInvulnerability;
+}
+
+bool MissionInterfaceManager::hasRapidFireCheat() const
+{
+    return cheatRapidFire;
+}
+
+bool MissionInterfaceManager::updateCheatMenu()
+{
+    if (MPlayer)
+        return false;
+
+    const bool toggle = gos_GetKeyStatus(KEY_F12) == KEY_PRESSED;
+    if (!cheatMenuOpen)
+    {
+        if (!toggle || isPaused() || bDrawHotKeys)
+            return false;
+        cheatMenuOpen = togglePauseWithoutMenu() != 0;
+        if (cheatMenuOpen)
+            userInput->setMouseCursor(mState_NORMAL);
+        return cheatMenuOpen;
+    }
+
+    if (toggle || gos_GetKeyStatus(KEY_ESCAPE) == KEY_PRESSED)
+    {
+        cheatMenuOpen = false;
+        togglePauseWithoutMenu();
+        return true;
+    }
+
+    const float scale = controlGui.getHudScale();
+    const long x = userInput->getMouseX() / scale;
+    const long y = userInput->getMouseY() / scale;
+    const GUI_RECT panel = cheatMenuRect();
+    const bool click = userInput->leftMouseReleased() && !userInput->wasLeftDrag();
+    auto& logistics = *LogisticsData::instance;
+
+    for (int row = 0; row < cheatRowCount; ++row)
+    {
+        if (gos_GetKeyStatus(static_cast<gosEnum_KeyIndex>(KEY_1 + row)) != KEY_PRESSED &&
+            (!click || !cheatRowContains(cheatRowRect(panel, row), x, y)))
+            continue;
+
+        switch (row)
+        {
+        case 0:
+            logistics.addCBills(creditGrant(logistics.getCBills(), campaignCreditGrant));
+            break;
+        case 1:
+            logistics.addResourcePoints(creditGrant(logistics.getResourcePoints(), supportCreditGrant));
+            break;
+        case 2:
+            cheatInvulnerability = !cheatInvulnerability;
+            break;
+        case 3:
+            cheatRapidFire = !cheatRapidFire;
+            break;
+        }
+        break;
+    }
+    return true;
+}
+
+void MissionInterfaceManager::renderCheatMenu()
+{
+    const float scale = controlGui.getHudScale();
+    if (scale > 1.0f)
+        gos_Set2DCanvasSize(controlGui.getHudWidth(), controlGui.getHudHeight());
+
+    gos_SetRenderState(gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+    gos_SetRenderState(gos_State_ZWrite, 0);
+    gos_SetRenderState(gos_State_ZCompare, 0);
+
+    const GUI_RECT panel = cheatMenuRect();
+    const int left = panel.left + 12;
+    const int width = panel.right - left - 12;
+    drawRect(panel, 0xf018222a);
+    drawRect({panel.left, panel.top, panel.right, panel.top + 2}, 0xff6ba6c7);
+    hotKeyHeaderFont.render("MISSION CHEATS", left, panel.top + 14, width, 26, 0xff8bc6e4, false, 0);
+
+    auto& logistics = *LogisticsData::instance;
+    const char* labels[cheatRowCount] = {
+        "1   +100,000 C-bills", "2   +10,000 RP", "3   Invulnerability", "4   Rapid fire"
+    };
+    char campaignBalance[32], supportBalance[32];
+    snprintf(campaignBalance, sizeof(campaignBalance), "%d", logistics.getCBills());
+    snprintf(supportBalance, sizeof(supportBalance), "%d", logistics.getResourcePoints());
+    const char* values[cheatRowCount] = {
+        campaignBalance, supportBalance, cheatInvulnerability ? "ON" : "OFF", cheatRapidFire ? "ON" : "OFF"
+    };
+    const long x = userInput->getMouseX() / scale;
+    const long y = userInput->getMouseY() / scale;
+    for (int row = 0; row < cheatRowCount; ++row)
+    {
+        const GUI_RECT rect = cheatRowRect(panel, row);
+        const bool active = (row == 2 && cheatInvulnerability) || (row == 3 && cheatRapidFire);
+        drawRect(rect, cheatRowContains(rect, x, y) ? 0xff385c70 : 0xff263b47);
+        hotKeyFont.render(labels[row], rect.left + 8, rect.top + 5, width - 112, 22,
+                          0xffedf4f7, false, 0);
+        hotKeyFont.render(values[row], rect.right - 8, rect.top + 5, 0, 22,
+                          active ? 0xffa4df9f : 0xffadc4cf, false, 1);
+    }
+    hotKeyFont.render("F12 / Esc   Resume mission", left, panel.bottom - 29, width, 21, 0xffadc4cf, false, 0);
+
+    if (scale > 1.0f)
+        gos_Set2DCanvasSize(Environment.screenWidth, Environment.screenHeight);
+}
+
 void MissionInterfaceManager::update (void)
 {
 	if ( Environment.screenWidth != resolutionX || Environment.screenHeight != resolutionY )
@@ -475,7 +622,9 @@ void MissionInterfaceManager::update (void)
 
 			//-------------------
 			// Mouse Checks Next
+			buttonPosX *= controlGui.getHudScale();
 			float realMouseX = userInput->realMouseX();
+			buttonPosY *= controlGui.getHudScale();
 			float realMouseY = userInput->realMouseY();
 
 			if (timeLeftToScroll > 0.0f)
@@ -536,7 +685,9 @@ void MissionInterfaceManager::update (void)
 
 			//-------------------
 			// Mouse Checks Next
+			buttonPosX *= controlGui.getHudScale();
 			float realMouseX = userInput->realMouseX();
+			buttonPosY *= controlGui.getHudScale();
 			float realMouseY = userInput->realMouseY();
 
 			if (timeLeftToScroll > 0.0f)
@@ -592,10 +743,27 @@ void MissionInterfaceManager::update (void)
 	}
 
 	//---------------------------------------------------
+    if (updateCheatMenu())
+        return;
+
 	// Per Andy G.  One check per frame saves log file!
 	bool shiftDn = userInput->shift();
 	bool altDn = userInput->alt();
 	bool ctrlDn = userInput->ctrl();
+
+    if (shiftDn && ctrlDn && gos_GetKeyStatus(KEY_F11) == KEY_PRESSED && !isPaused() &&
+        !controlGui.isChatting() && !controlGui.isMoviePlaying() &&
+        ControlGui::supportsHudScaling(Environment.screenWidth, Environment.screenHeight))
+    {
+        switch (prefs.hudScale)
+        {
+        case 100: prefs.hudScale = 125; break;
+        case 125: prefs.hudScale = 200; break;
+        default: prefs.hudScale = 100; break;
+        }
+        controlGui.swapResolutions(Environment.screenWidth, Environment.screenHeight);
+        prefs.save();
+    }
 
 	//Cheats
 	// Comment out here if FINAL
@@ -2320,7 +2488,8 @@ int MissionInterfaceManager::eject()
 		userInput->setMouseCursor( mState_EJECT );
 	
 	}
-	else if ( !controlGui.forceGroupBar.inRegion( userInput->getMouseX(), userInput->getMouseY() ) )
+	else if ( !controlGui.forceGroupBar.inRegion(userInput->getMouseX() / controlGui.getHudScale(),
+        userInput->getMouseY() / controlGui.getHudScale()) )
 		userInput->setMouseCursor( mState_XEJECT );
 	return 1;
 }
@@ -3061,6 +3230,8 @@ void MissionInterfaceManager::render (void)
 	}
 
 	controlGui.render( isPaused() && !isPausedWithoutMenu() );
+    if (cheatMenuOpen && !MPlayer)
+        renderCheatMenu();
 
   /* 	if ( scenarioTime  < 7.0 )
    	{

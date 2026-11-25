@@ -490,8 +490,8 @@ void InfoWindow::update()
 		return;
 	}
 
-	long mouseX = userInput->getMouseX();
-	long mouseY = userInput->getMouseY();
+	long mouseX = userInput->getMouseX() / ControlGui::instance->getHudScale();
+	long mouseY = userInput->getMouseY() / ControlGui::instance->getHudScale();
 
 
 

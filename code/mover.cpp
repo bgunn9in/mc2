@@ -5999,9 +5999,10 @@ bool Mover::isWeaponReady (long weaponIndex) {
 //------------------------------------------------------------------------------------------
 
 void Mover::startWeaponRecycle (long weaponIndex) {
-
-	inventory[weaponIndex].readyTime = scenarioTime +
-									   MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponRecycleTime();
+    float recycleTime = MasterComponent::masterList[inventory[weaponIndex].masterID].getWeaponRecycleTime();
+    if (mission)
+        recycleTime *= mission->playerWeaponRecycleScale(getCommanderId());
+    inventory[weaponIndex].readyTime = scenarioTime + recycleTime;
 }
 
 //------------------------------------------------------------------------------------------
