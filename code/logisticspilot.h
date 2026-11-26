@@ -100,6 +100,7 @@ class LogisticsPilot
 
 		long		update( MechWarrior* pWarrior );
         void applyEditedSkills(MechWarrior& pilot);
+        void setEditedStats(float editedGunnery, float editedPiloting);
 
 		int			getSpecialtySkillCount() const;
 		int			getSpecialtySkills( const char** array, int& count );

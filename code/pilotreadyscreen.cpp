@@ -6,6 +6,7 @@ PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
 \*************************************************************************************************/
 
 #include"pilotreadyscreen.h"
+#include "piloteditor.h"
 #include"logisticsmech.h"
 #include"logisticsdata.h"
 #include"logisticsmechicon.h"
@@ -15,6 +16,20 @@ PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
 #include"gamesound.h"
 #include"multplyr.h"
 #include"chatwindow.h"
+
+namespace
+{
+PilotEditor::Values pilotEditorValues(LogisticsPilot& pilot)
+{
+    return {pilot.getName(), pilot.getRank(), {pilot.getGunnery(), pilot.getPiloting()},
+            pilot.getSpecialtySkills()};
+}
+
+GUI_RECT pilotEditorPanel()
+{
+    return PilotEditor::panelRect(Environment.screenWidth, Environment.screenHeight);
+}
+}
 
 PilotReadyScreen* PilotReadyScreen::s_instance = NULL;
 
@@ -52,6 +67,8 @@ PilotReadyScreen::~PilotReadyScreen()
 
 void PilotReadyScreen::init(FitIniFile* file)
 {
+    pilotEditorFont.init(IDS_HOT_KEY_FONT);
+    pilotEditorHeaderFont.init(IDS_HOT_KEY_HEADER_FONT);
 	mechDisplay.init();
 	// init button, texts, statics, rects
 	LogisticsScreen::init( *file, "PilotReadyStatic", "PilotReadyTextEntry", "PilotReadyRect", "PilotReadyButton" );
@@ -163,6 +180,7 @@ void PilotReadyScreen::init(FitIniFile* file)
 
 void PilotReadyScreen::begin()
 {
+    pilotEditorOpen = false;
 	getButton( MB_MSG_PREV )->disable( false );
 	getButton( MB_MSG_MAINMENU )->disable( false );
 	launchFadeTime = 0;
@@ -262,6 +280,8 @@ void PilotReadyScreen::begin()
 				pilotListBox.SelectItem( 0 );
 				setPilot( pItem->getPilot() );
 			}
+            else
+                setPilot(nullptr);
 
 			pIcons[0].select( true );
 		}
@@ -271,6 +291,7 @@ void PilotReadyScreen::begin()
 
 void PilotReadyScreen::end()
 {
+    pilotEditorOpen = false;
 	mechDisplay.setMech( NULL );
 }
 
@@ -339,8 +360,60 @@ void PilotReadyScreen::render(int xOffset, int yOffset )
 	if ( pDragPilot )
 		dragIcon.render();
 
+    if (pilotEditorOpen && !xOffset && !yOffset)
+    {
+        PilotEditor::render(pilotEditorValues(*pCurPilot), pilotEditorPanel(), userInput->getMouseX(),
+                            userInput->getMouseY(), pilotEditorFont, pilotEditorHeaderFont);
+    }
 }
 
+
+bool PilotReadyScreen::updatePilotEditor()
+{
+    if (MPlayer || pDragPilot || mechSelected || !pCurPilot || pCurPilot->isDead())
+        return false;
+
+    if (gos_GetKeyStatus(KEY_F12) == KEY_PRESSED)
+    {
+        pilotEditorOpen = !pilotEditorOpen;
+        if (pilotEditorOpen)
+            userInput->setMouseCursor(mState_NORMAL);
+        return true;
+    }
+    if (!pilotEditorOpen)
+        return false;
+
+    if (gos_GetKeyStatus(KEY_ESCAPE) == KEY_PRESSED)
+        pilotEditorOpen = false;
+    else if (userInput->leftMouseReleased() && !userInput->wasLeftDrag())
+    {
+        auto values = pilotEditorValues(*pCurPilot);
+        const auto result = PilotEditor::click(values, pilotEditorPanel(), userInput->getMouseX(),
+                                               userInput->getMouseY());
+        if (result == PilotEditor::Result::Close)
+            pilotEditorOpen = false;
+        else if (result == PilotEditor::Result::Stats || result == PilotEditor::Result::Specialty)
+        {
+            if (result == PilotEditor::Result::Stats)
+            {
+                pCurPilot->setEditedStats(values.skills[0], values.skills[1]);
+                const int selected = pilotListBox.GetSelectedItem();
+                if (selected >= 0)
+                {
+                    auto* item = static_cast<LogisticsPilotListBoxItem*>(pilotListBox.GetItem(selected));
+                    if (item && item->getPilot() == pCurPilot)
+                    {
+                        pilotListBox.removePilot(pCurPilot);
+                        const int index = pilotListBox.AddItem(new LogisticsPilotListBoxItem(pCurPilot));
+                        pilotListBox.SelectItem(index);
+                    }
+                }
+            }
+            setPilot(pCurPilot);
+        }
+    }
+    return true;
+}
 
 void PilotReadyScreen::update()
 {
@@ -352,6 +425,9 @@ void PilotReadyScreen::update()
 
 	if ( getButton( MB_MSG_PREV )->isEnabled() ) // this is disabled if the user has already pressed launch )
 	{
+        if (updatePilotEditor())
+            return;
+
 		// update current text
 		char str[64];
 

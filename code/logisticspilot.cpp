@@ -248,6 +248,13 @@ void LogisticsPilot::applyEditedSkills(MechWarrior& pilot)
     memcpy(specialtySkills, pilot.specialtySkills, sizeof(specialtySkills));
 }
 
+void LogisticsPilot::setEditedStats(float editedGunnery, float editedPiloting)
+{
+    gunnery = editedGunnery;
+    piloting = editedPiloting;
+    rank = turnAverageIntoRank((gunnery + piloting) / 2.0f);
+}
+
 void LogisticsPilot::clearIcons()
 {
 	// clear out the old ones

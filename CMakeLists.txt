@@ -166,6 +166,7 @@ set(SOURCES
     "code/missionresults.cpp"
     "code/missionselectionscreen.cpp"
     "code/mpprefs.cpp"
+    "code/piloteditor.cpp"
     "code/pilotreadyscreen.cpp"
     "code/pilotreviewarea.cpp"
     "code/salvagemecharea.cpp"
