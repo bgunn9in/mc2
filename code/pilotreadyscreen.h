@@ -43,6 +43,11 @@ public:
 
 private:
 
+    bool pilotEditorOpen = false;
+    aFont pilotEditorFont;
+    aFont pilotEditorHeaderFont;
+    bool updatePilotEditor();
+
 	LogisticsPilot*		pCurPilot;
 	LogisticsPilot*		pDragPilot;
 	LogisticsMechIcon*	pIcons;
